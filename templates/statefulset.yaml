@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ocspd.fullname" . }}
+  labels:
+    {{- include "ocspd.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ocspd.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ocspd.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ocspd.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ui#
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /ui#
+              port: http
+          env:
+            - name: APPLICATION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "You must specify an application secret" .Values.appSecret.secretName }}
+                  key: {{ required "You must specify an application secret" .Values.appSecret.secretKey }}
+            - name: LICENSE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "You must specify a license secret" .Values.license.secretName }}
+                  key: {{ required "You must specify a license secret" .Values.license.secretKey }}
+            - name: HOSTS_ALLOWED.0
+              value: "."
+            - name: LOGGING_APPENDER
+              value: {{ .Values.logFormat | quote }}
+            {{- if .Values.env }}
+            {{- toYaml .Values.env | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: database
+              mountPath: /ocspd/database
+            - name: crls
+              mountPath: /ocspd/crls
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: database
+      spec:
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        accessModes: [{{ .Values.persistence.accessMode | quote }}]
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+    - metadata:
+        name: crls
+      spec:
+        storageClassName: {{ .Values.persistence.storageClass | quote }}
+        accessModes: [{{ .Values.persistence.accessMode | quote }}]
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}

@@ -1,0 +1,41 @@
+{{- if .Values.ingresses.enabled }}
+
+{{- if not (eq (len .Values.ingresses.hostnames) (.Values.replicaCount | int))}}
+{{- fail "ingress.hostnames must be the same length as replicaCount"}}
+{{- end }}
+
+{{- range $index, $hostname := $.Values.ingresses.hostnames }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ocspd.fullname" $ }}-{{ $index | toString }}
+  labels:
+    {{- include "ocspd.labels" $ | nindent 4 }}
+  {{- with $.Values.ingresses.annotations }}
+  annotations:
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ $.Values.ingresses.className }}
+  rules:
+    - host: {{ $hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ocspd.fullname" $ }}-{{ $index | toString }}
+                port:
+                  name: http
+  {{- if $.Values.ingresses.tlsSecrets }}
+  {{- range $hostname, $secret := $.Values.ingresses.tlsSecrets }}
+  tls:
+    - hosts:
+        - {{ $hostname }}
+      secretName: {{ $secret }}
+  {{- end }}
+  {{- end }}
+---
+{{- end }}
+{{- end }}

@@ -1,0 +1,18 @@
+{{- range until (.Values.replicaCount | int) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ocspd.fullname" $ }}-{{ . | toString }}
+  labels:
+    {{- include "ocspd.labels" $ | nindent 4 }}
+spec:
+  type: {{ $.Values.services.type }}
+  ports:
+    - port: {{ $.Values.services.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    statefulset.kubernetes.io/pod-name: {{ include "ocspd.name" $ }}-{{ . | toString }}
+---
+{{- end }}
