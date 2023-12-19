@@ -15,17 +15,11 @@ spec:
     - host: {{ .Values.ingress.hostname }}
       http:
         paths:
-          - path: /
+          - path: /ocsp
             pathType: Prefix
             backend:
               service:
                 name: {{ include "ocspd.fullname" $ }}
                 port:
                   name: http
-  {{- if .Values.ingress.tls }}
-  tls:
-    - hosts:
-        - {{ .Values.ingress.hostname }}
-      secretName: {{ .Values.ingress.hostname }}-tls
-  {{- end }}
 {{- end }}

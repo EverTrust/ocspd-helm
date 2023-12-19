@@ -1,0 +1,17 @@
+{{- if .Values.crls.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ocspd.fullname" $ }}-crl
+  labels:
+    {{- include "ocspd.labels" $ | nindent 4 }}
+spec:
+  type: {{ $.Values.service.type }}
+  ports:
+    - port: 80
+      targetPort: crl
+      protocol: TCP
+      name: http
+  selector:
+    {{ include "ocspd.selectorLabels" $ | nindent 4}}
+{{- end }}

@@ -11,6 +11,8 @@ spec:
   selector:
     matchLabels:
       {{- include "ocspd.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: OnDelete
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -45,6 +47,12 @@ spec:
             httpGet:
               path: /ui#
               port: http
+          startupProbe:
+            httpGet:
+              path: /ui#
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
           env:
             - name: APPLICATION_SECRET
               valueFrom:
@@ -70,6 +78,34 @@ spec:
               mountPath: /ocspd/database
             - name: crls
               mountPath: /ocspd/crls
+        {{- if .Values.crls.enabled }}
+        - name: {{ $.Chart.Name }}-crl
+          securityContext:
+            {{- toYaml $.Values.securityContext | nindent 12 }}
+          image: "{{ $.Values.crls.image.repository }}:{{ $.Values.crls.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.crls.image.pullPolicy }}
+          ports:
+            - name: crl
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: crl
+          readinessProbe:
+            tcpSocket:
+              port: crl
+          startupProbe:
+            tcpSocket:
+              port: crl
+            failureThreshold: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml $.Values.crls.resources | nindent 12 }}
+          volumeMounts:
+            - name: crls
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -86,7 +122,9 @@ spec:
     - metadata:
         name: database
       spec:
+        {{- if .Values.persistence.storageClass }}
         storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
         accessModes: [{{ .Values.persistence.accessMode | quote }}]
         resources:
           requests:
@@ -94,7 +132,9 @@ spec:
     - metadata:
         name: crls
       spec:
+        {{- if .Values.persistence.storageClass }}
         storageClassName: {{ .Values.persistence.storageClass | quote }}
+        {{- end }}
         accessModes: [{{ .Values.persistence.accessMode | quote }}]
         resources:
           requests:

@@ -1,0 +1,25 @@
+{{- if and .Values.crls.enabled .Values.crls.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ocspd.fullname" $ }}-crl
+  labels:
+    {{- include "ocspd.labels" $ | nindent 4 }}
+  {{- with .Values.crls.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.crls.ingress.className }}
+  rules:
+    - host: {{ .Values.crls.ingress.hostname }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "ocspd.fullname" . }}-crl
+                port:
+                  name: http
+{{- end }}

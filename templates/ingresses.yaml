@@ -1,7 +1,11 @@
 {{- if .Values.ingresses.enabled }}
 
 {{- if not (eq (len .Values.ingresses.hostnames) (.Values.replicaCount | int))}}
-{{- fail "ingress.hostnames must be the same length as replicaCount"}}
+{{- fail "ingresses.hostnames must be the same length as replicaCount"}}
+{{- end }}
+
+{{- if and (not (eq (len .Values.ingresses.tlsSecrets) 0)) (not (eq (len .Values.ingresses.hostnames) (len .Values.ingresses.tlsSecrets | int))) }}
+{{- fail "ingresses.hostnames must be the same length as ingresses.tlsSecrets"}}
 {{- end }}
 
 {{- range $index, $hostname := $.Values.ingresses.hostnames }}
@@ -29,12 +33,10 @@ spec:
                 port:
                   name: http
   {{- if $.Values.ingresses.tlsSecrets }}
-  {{- range $hostname, $secret := $.Values.ingresses.tlsSecrets }}
   tls:
     - hosts:
         - {{ $hostname }}
-      secretName: {{ $secret }}
-  {{- end }}
+      secretName: {{ index $.Values.ingresses.tlsSecrets $index }}
   {{- end }}
 ---
 {{- end }}

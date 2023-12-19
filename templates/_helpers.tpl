@@ -51,6 +51,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+CRL selector labels
+*/}}
+{{- define "ocspd.crlSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "ocspd.name" . }}-crl
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "ocspd.serviceAccountName" -}}
